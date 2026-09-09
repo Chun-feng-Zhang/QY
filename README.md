@@ -7,7 +7,7 @@
 | 目录 | 方向 | 状态 | 说明 |
 |---|---|---|---|
 | [`pulsar_relay/`](pulsar_relay/README.md) | A · 双站共视接力观测 | ✅ 可用 | 洛南 × 杭州双 40 m 射电望远镜脉冲星共视接力 24 h 不间断观测规划 |
-| [`duffing/`](duffing/README.md) | B · Duffing 混沌振子微弱信号检测 | 🚧 骨架 | 混沌振子用于强噪声背景下微弱周期信号检测（代码待补充） |
+| [`duffing/`](duffing/README.md) | B · Duffing 振子单脉冲信号增强 | ✅ 可用 | B1937+21 相干消色散 + 强耦合 Duffing 双振子单脉冲 SNR 增强 |
 | — | C · 待定 | ⏳ 规划中 | 后续新增方向在此登记 |
 
 ## 约定
