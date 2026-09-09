@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+
+# 运行生成物(重跑脚本可再生成)
+*.csv
+*.png
+*.jpg
+run_out.txt
+
+# DEM: 仅入库压缩包 .img.zip; 解压产生的 .img / 变体不入库
+ASTGTM_*.img
+
+# 图纸 / 报告 / 文档
+*.pdf
+*.docx
+*.xlsx
+
+# 本地副本 / 备份 / 安装残留
+*- 副本*
+*backup*.py
+winget_install*.log
+winget_install*.err
+git_install_status*.txt
+
+# 打包的图形产物(仅放行 DEM 压缩包)
+*.zip
+!ASTGTM_*.img.zip
+
+# 过时说明等杂项
+readme.txt
+
+# 系统
+Thumbs.db
+.DS_Store
