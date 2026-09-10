@@ -3,8 +3,8 @@
 =============================================================================
  双40米射电望远镜 · 脉冲星共视接力24小时不间断观测方案
 =============================================================================
- 台站1: 陕西省商洛市洛南县保安镇       34.170851°N, 109.951457°E, 海拔≈1060 m
- 台站2: 浙江省杭州市(用户提供坐标)     29.934176°N, 119.829719°E, 海拔≈10 m
+ 台站1: 陕西省商洛市洛南县保安镇       34.170851°N, 109.951457°E, 海拔≈1080 m
+ 台站2: 浙江省富阳(用户提供坐标)     29.934176°N, 119.829719°E, 海拔≈30 m
 
  输入: 脉冲星列表文件(每行一个J名称, 如 J0437-4715; 赤经=HH:MM, 赤纬=±DD:MM)
 
@@ -33,7 +33,7 @@
  用法:
    python pulsar_relay_plan.py
    python pulsar_relay_plan.py --pulsars 10-MSP.txt --date 2026-08-20 \
-        --luonan-obs 7.0 --hangzhou-obs 0.0 --min-elev 5.0 \
+        --luonan-obs 0.0 --hangzhou-obs 0.0 --min-elev 5.0 \
         --margin 0.0 --strategy longest
    # 叠加DEM地形遮挡(自动查找同目录 ASTGTM_N34E109*.img / ASTGTM_N29E119*.img):
    python pulsar_relay_plan.py --pulsars 10-MSP.txt \
@@ -93,8 +93,8 @@ except Exception:
 OUT_DIR = Path(__file__).resolve().parent
 
 SITES = {
-    "Luonan":   {"cn": "洛南(保安镇)",      "lat": 34.17085105, "lon": 109.95145724, "height": 1060.0},
-    "Hangzhou": {"cn": "杭州(铜鉴湖公园)",  "lat": 29.934176, "lon": 119.829719, "height": 10.0},
+    "Luonan":   {"cn": "洛南(保安镇)",      "lat": 34.17085105, "lon": 109.95145724, "height": 1080.0},
+    "Hangzhou": {"cn": "杭州(富阳)",       "lat": 29.934176, "lon": 119.829719, "height": 30.0},
 }
 
 
@@ -150,7 +150,8 @@ def obs_at(profile, az_deg):
 R_EARTH_M = 6371000.0
 REFR_K = 4.0 / 3.0
 DEM_STEP_M = 30.0       # 视线采样间距(m), 与 ASTER 1"≈30m 分辨率相当
-DEM_D0_M = 60.0         # 采样起点: 跳过望远镜自身及最近像素
+DEM_D0_M = 500.0        # 采样起点(m): 跳过台站近场(近场30m格网像元含台站建筑/树冠,
+                        #   会形成数十度的假遮挡峰); 需恢复旧行为可设 --dem-d0 60
 DEM_RMAX_KM = 100.0     # 视线最大半径: 更远处地形被地球曲率压平, 不再构成遮挡
 
 
@@ -261,15 +262,17 @@ def _geo_forward(lat0, lon0, az_deg, dists):
     return lat1, lon1
 
 
-def _site_h0(site, loaded):
-    """台站相位中心海拔: 优先 DEM 台站像素高程(各块均值), 否则台站参数海拔; +天线轴高"""
+def _site_h0(site, loaded, ant_height=15.0):
+    """台站相位中心海拔 = 实测台站海拔(site['height']) + 天线轴高(--ant-height)。
+    另返回 DEM 台站像素高程(仅作参考输出, 可能为 None)。"""
     hs = []
     for (z, tr, crs, bnd, nm) in loaded:
         hh = _bilinear(z, tr, crs, np.array([site["lon"]]), np.array([site["lat"]]))[0]
         if not np.isnan(hh):
             hs.append(float(hh))
-    hdem = float(np.mean(hs)) if hs else site["height"]
-    return hdem, (hdem if hs else None)
+    hdem = float(np.mean(hs)) if hs else None
+    h0 = float(site.get("height", 0.0)) + float(ant_height)
+    return h0, hdem
 
 
 def dem_obstruction_profiles(dem_arg, key, args):
@@ -307,8 +310,10 @@ def dem_obstruction_profiles(dem_arg, key, args):
     if not loaded:
         return None
 
-    h0, hdem = _site_h0(site, loaded)
-    ds = np.arange(DEM_D0_M, DEM_RMAX_KM * 1000.0, DEM_STEP_M)
+    h0, hdem = _site_h0(site, loaded, args.ant_height)
+    d0_m = float(getattr(args, "dem_d0", DEM_D0_M))
+    rmax_km = float(getattr(args, "dem_rmax", DEM_RMAX_KM))
+    ds = np.arange(d0_m, rmax_km * 1000.0, DEM_STEP_M)
     drop = ds * ds / (2.0 * REFR_K * R_EARTH_M)   # 地球曲率视落差(含折射)
     obs = np.full(360, np.nan)
     dist = np.zeros(360)
@@ -411,6 +416,11 @@ def main():
     ap.add_argument("--dem-mode", choices=["max", "replace"], default="max",
                     help="DEM与均匀/CSV基准的合成: max=逐方位取较大(基准保底, 默认); "
                          "replace=以DEM曲线为准, 仅无数据方位用基准")
+    ap.add_argument("--dem-d0", type=float, default=500.0,
+                    help="DEM视线采样起点(m), 默认500: 跳过台站近场(近场像元含建筑/树冠,"
+                         "会形成数十度假遮挡峰); 设60可恢复旧行为")
+    ap.add_argument("--dem-rmax", type=float, default=100.0,
+                    help="DEM视线最大采样半径(km), 默认100; 更远处地形被曲率压平")
     ap.add_argument("--min-elev", type=float, default=5.0,
                     help="望远镜最低仰角/俯仰极限(度), 两侧相同, 默认5; 设0可关闭")
     ap.add_argument("--margin", type=float, default=0.0,
