@@ -25,8 +25,8 @@ rasterio   # 仅当使用 DEM 地形遮挡时需要
 ## 用法
 
 ```bash
-# 基本：洛南均匀遮挡 7°、杭州均匀遮挡 15°
-python pulsar_relay_plan.py --pulsars 10-MSP.txt --luonan-obs 7 --hangzhou-obs 15
+# 基本：洛南均匀遮挡 5°、杭州均匀遮挡 5°
+python pulsar_relay_plan.py --pulsars 10-MSP.txt --luonan-obs 5 --hangzhou-obs 5
 
 # 杭州遮挡以 DEM 曲线为准（南侧地形低，J0437 等南天源可共视）
 python pulsar_relay_plan.py --pulsars 10-MSP.txt --date 2026-09-09 --luonan-obs 0.0 --hangzhou-obs 0.0 --min-elev 5.0 --margin 1.0 --strategy longest
